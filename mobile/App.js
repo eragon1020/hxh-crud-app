@@ -4,8 +4,8 @@ import { Provider as PaperProvider, Button, Card, Text, ActivityIndicator } from
 import axios from 'axios';
 
 const API_CONFIG = {
-  relational: 'http://localhost:4000',
-  nosql: 'http://localhost:5000'
+  relational: 'https://hxh-crud-app.onrender.com',
+  nosql: 'https://hxh-nosql.onrender.com'
 };
 
 export default function App() {
