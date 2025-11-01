@@ -1,0 +1,54 @@
+version: '3.9'
+
+services:
+  postgres:
+    image: postgres:15
+    container_name: hxh_postgres
+    restart: always
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: hxh_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+
+  mongo:
+    image: mongo:6
+    container_name: hxh_mongo
+    restart: always
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+
+  relational-service:
+    build: ./microservices/relational
+    container_name: hxh_relational_service
+    restart: always
+    environment:
+      - DATABASE_URL=postgresql://user:password@postgres:5432/hxh_db
+      - NODE_ENV=development
+      - API_URL=http://localhost:4000
+    ports:
+      - "4000:4000"
+    depends_on:
+      - postgres
+
+  nosql-service:
+    build: ./microservices/nosql
+    container_name: hxh_nosql_service
+    restart: always
+    environment:
+      - MONGODB_URI=mongodb://mongo:27017/hxh_db
+      - NODE_ENV=development
+      - API_URL=http://localhost:5000
+    ports:
+      - "5000:5000"
+    depends_on:
+      - mongo
+
+volumes:
+  pg_data:
+  mongo_data:
