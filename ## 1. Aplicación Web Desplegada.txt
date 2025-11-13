@@ -1,0 +1,38 @@
+## 1. Aplicación Web Desplegada
+- **URL Frontend:** https://hxh-crud-app-git-main-bryams-projects-98dcf78a.vercel.app
+- **Descripción:** Interfaz web con CRUD completo para gestión de personajes
+
+## 2. Microservicios Alojados en la Web
+
+### API Relacional (PostgreSQL)
+- **URL Base:** https://hxh-crud-app.onrender.com
+- **Endpoints para Postman:**
+  - GET    https://hxh-crud-app.onrender.com/api/characters
+  - POST   https://hxh-crud-app.onrender.com/api/characters
+  - PUT    https://hxh-crud-app.onrender.com/api/characters/:id
+  - DELETE https://hxh-crud-app.onrender.com/api/characters/:id
+
+### API NoSQL (MongoDB)
+- **URL Base:** https://hxh-nosql.onrender.com
+- **Endpoints para Postman:**
+  - GET    https://hxh-nosql.onrender.com/api/characters
+  - POST   https://hxh-nosql.onrender.com/api/characters
+  - PUT    https://hxh-nosql.onrender.com/api/characters/:id
+  - DELETE https://hxh-nosql.onrender.com/api/characters/:id
+
+## 3. Documentación Swagger
+
+### Swagger API Relacional
+- **URL:** https://hxh-crud-app.onrender.com/api-docs
+- **Descripción:** Documentación interactiva de endpoints PostgreSQL
+
+### Swagger API NoSQL
+- **URL:** https://hxh-nosql.onrender.com/api-docs
+- **Descripción:** Documentación interactiva de endpoints MongoDB
+
+## 4. Repositorio GitHub
+- **URL:** https://github.com/eragon1020/hxh-crud-app
+
+## 5. Bases de Datos
+- **PostgreSQL:** Supabase (6 personajes: Gon, Killua, Kurapika, Leorio, Biscuit, Knuckle)
+- **MongoDB:** Atlas (6 personajes: Hisoka, Chrollo, Illumi, Feitan, Machi, Nobunaga)
