@@ -13,6 +13,7 @@ export default function App() {
   const [searchResult, setSearchResult] = useState(null);
   const [loading, setLoading] = useState(false);
   const [showForm, setShowForm] = useState(false);
+  const [formMode, setFormMode] = useState('create'); // 'create' o 'edit'
   const [form, setForm] = useState({ 
     id: null, 
     name: '', 
@@ -68,6 +69,7 @@ export default function App() {
     setSearchQuery('');
     setSearchResult(null);
     setShowForm(false);
+    setFormMode('create');
     setForm({ 
       id: null, 
       name: '', 
@@ -78,6 +80,23 @@ export default function App() {
       origin: '', 
       image_url: '' 
     });
+  };
+
+  // Mostrar formulario para crear nuevo personaje
+  const handleShowCreateForm = () => {
+    setFormMode('create');
+    setForm({ 
+      id: null, 
+      name: '', 
+      age: '', 
+      height_cm: '', 
+      weight_kg: '', 
+      nen_type: '', 
+      origin: '', 
+      image_url: '' 
+    });
+    setSearchResult(null);
+    setShowForm(true);
   };
 
   // Guardar o actualizar personaje
@@ -141,6 +160,7 @@ export default function App() {
       setShowForm(false);
       setSearchResult(null);
       setSearchQuery('');
+      setFormMode('create');
     } catch (err) {
       console.error('Error saving:', err);
       Alert.alert('❌ Error', err.message || 'No se pudo guardar el personaje');
@@ -150,6 +170,7 @@ export default function App() {
 
   // Editar personaje
   const handleEdit = (char) => {
+    setFormMode('edit');
     setForm({
       id: char.id || char._id,
       name: char.name,
@@ -163,96 +184,94 @@ export default function App() {
     setShowForm(true);
   };
 
-  // Eliminar personaje con confirmación nativa del navegador
-  const handleDelete = async (char) => {
-    // Obtener el ID correcto según la base de datos
+  // Eliminar personaje
+  const handleDelete = (char) => {
     const id = activeDB === 'relational' ? char.id : char._id;
     const name = char.name;
     
-    // Validar que tengamos un ID
     if (!id) {
       Alert.alert('❌ Error', 'No se pudo obtener el ID del personaje');
       console.error('Character without ID:', char);
       return;
     }
     
-    // Usar confirm() del navegador en lugar de Alert.alert para web
-    const confirmed = window.confirm(`⚠️ ¿Deseas eliminar a "${name}"?\n\nBase de datos: ${activeDB}\nID: ${id}`);
-    
-    if (!confirmed) {
-      console.log('Delete cancelled by user');
-      return;
-    }
-    
-    console.log('=== DELETE ATTEMPT ===');
-    console.log('Database:', activeDB);
-    console.log('Character:', char);
-    console.log('ID to delete:', id);
-    console.log('ID type:', typeof id);
-    
-    setLoading(true);
-    try {
-      const deleteUrl = `${apiUrl}/${id}`;
-      
-      console.log('=== DELETE REQUEST ===');
-      console.log('URL:', deleteUrl);
-      console.log('Method: DELETE');
-      
-      const response = await fetch(deleteUrl, {
-        method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json',
+    Alert.alert(
+      '⚠️ Confirmar eliminación',
+      `¿Deseas eliminar a "${name}"?\n\nBase de datos: ${activeDB}\nID: ${id}`,
+      [
+        {
+          text: 'Cancelar',
+          style: 'cancel',
+          onPress: () => console.log('Delete cancelled')
+        },
+        {
+          text: 'Eliminar',
+          style: 'destructive',
+          onPress: async () => {
+            console.log('=== DELETE ATTEMPT ===');
+            console.log('Database:', activeDB);
+            console.log('Character:', char);
+            console.log('ID to delete:', id);
+            
+            setLoading(true);
+            try {
+              const deleteUrl = `${apiUrl}/${id}`;
+              
+              console.log('=== DELETE REQUEST ===');
+              console.log('URL:', deleteUrl);
+              
+              const response = await fetch(deleteUrl, {
+                method: 'DELETE',
+                headers: {
+                  'Content-Type': 'application/json',
+                }
+              });
+
+              console.log('=== DELETE RESPONSE ===');
+              console.log('Status:', response.status);
+
+              const responseText = await response.text();
+              console.log('Response body (text):', responseText);
+
+              let data;
+              try {
+                data = responseText ? JSON.parse(responseText) : {};
+                console.log('Response body (parsed):', data);
+              } catch (e) {
+                console.log('Response is not valid JSON');
+                data = { message: responseText };
+              }
+
+              if (!response.ok) {
+                const errorMsg = data.error || data.message || `Error ${response.status}: ${response.statusText}`;
+                throw new Error(errorMsg);
+              }
+
+              console.log('=== DELETE SUCCESS ===');
+              
+              Alert.alert(
+                '✅ Eliminado', 
+                `El personaje "${name}" ha sido eliminado correctamente`
+              );
+              
+              setSearchResult(null);
+              setSearchQuery('');
+              
+            } catch (err) {
+              console.error('=== DELETE ERROR ===');
+              console.error('Error:', err.message);
+              
+              Alert.alert(
+                '❌ Error al eliminar',
+                `No se pudo eliminar a "${name}"\n\nError: ${err.message}`
+              );
+            } finally {
+              setLoading(false);
+            }
+          }
         }
-      });
-
-      console.log('=== DELETE RESPONSE ===');
-      console.log('Status:', response.status);
-      console.log('Status Text:', response.statusText);
-      console.log('OK:', response.ok);
-
-      // Intentar leer la respuesta como texto primero
-      const responseText = await response.text();
-      console.log('Response body (text):', responseText);
-
-      let data;
-      try {
-        data = responseText ? JSON.parse(responseText) : {};
-        console.log('Response body (parsed):', data);
-      } catch (e) {
-        console.log('Response is not valid JSON');
-        data = { message: responseText };
-      }
-
-      if (!response.ok) {
-        const errorMsg = data.error || data.message || `Error ${response.status}: ${response.statusText}`;
-        throw new Error(errorMsg);
-      }
-
-      console.log('=== DELETE SUCCESS ===');
-      
-      Alert.alert(
-        '✅ Eliminado', 
-        `El personaje "${name}" ha sido eliminado correctamente`
-      );
-      
-      // Limpiar el estado
-      setSearchResult(null);
-      setSearchQuery('');
-      
-    } catch (err) {
-      console.error('=== DELETE ERROR ===');
-      console.error('Error object:', err);
-      console.error('Error message:', err.message);
-      console.error('Error stack:', err.stack);
-      
-      Alert.alert(
-        '❌ Error al eliminar',
-        `No se pudo eliminar a "${name}"\n\nError: ${err.message}`,
-        [{ text: 'OK' }]
-      );
-    } finally {
-      setLoading(false);
-    }
+      ]
+    );
   };
 
   // Cambiar de base de datos
@@ -262,6 +281,7 @@ export default function App() {
     setSearchResult(null);
     setSearchQuery('');
     setShowForm(false);
+    setFormMode('create');
     setForm({ 
       id: null, 
       name: '', 
@@ -304,7 +324,7 @@ export default function App() {
           </Text>
         </View>
 
-        {/* Buscador - SIEMPRE VISIBLE */}
+        {/* Buscador */}
         <View style={styles.searchSection}>
           <Text style={styles.sectionTitle}>🔍 Buscar Personaje</Text>
           <TextInput
@@ -337,12 +357,27 @@ export default function App() {
           </View>
         </View>
 
+        {/* NUEVO: Botón para agregar personaje */}
+        {!showForm && !searchResult && (
+          <View style={styles.addSection}>
+            <Button 
+              mode="contained" 
+              onPress={handleShowCreateForm}
+              style={styles.addBtn}
+              icon="plus-circle"
+              disabled={loading}
+            >
+              ➕ Agregar Nuevo Personaje
+            </Button>
+          </View>
+        )}
+
         {/* Loading */}
         {loading && (
           <ActivityIndicator animating={true} color="#00ff41" size="large" style={styles.loader} />
         )}
 
-        {/* Resultado de búsqueda CON BOTONES */}
+        {/* Resultado de búsqueda */}
         {!loading && searchResult && (
           <View>
             <Card style={styles.card}>
@@ -367,7 +402,7 @@ export default function App() {
               </Card.Content>
             </Card>
 
-            {/* BOTONES DEBAJO DEL PERSONAJE */}
+            {/* Botones de acción */}
             <View style={styles.actionButtons}>
               <Button 
                 mode="contained" 
@@ -391,11 +426,11 @@ export default function App() {
           </View>
         )}
 
-        {/* Formulario - SOLO CUANDO SE NECESITA */}
+        {/* Formulario */}
         {showForm && (
           <View style={styles.form}>
             <Text style={styles.sectionTitle}>
-              ✏️ Editar Personaje
+              {formMode === 'create' ? '➕ Crear Nuevo Personaje' : '✏️ Editar Personaje'}
             </Text>
             
             <TextInput
@@ -464,13 +499,14 @@ export default function App() {
               disabled={loading}
               icon="content-save"
             >
-              💾 Guardar Cambios
+              💾 {formMode === 'create' ? 'Crear Personaje' : 'Guardar Cambios'}
             </Button>
 
             <Button 
               mode="outlined" 
               onPress={() => {
                 setShowForm(false);
+                setFormMode('create');
                 setForm({ 
                   id: null, 
                   name: '', 
@@ -491,7 +527,6 @@ export default function App() {
           </View>
         )}
 
-        {/* Espacio al final */}
         <View style={{ height: 50 }} />
       </ScrollView>
     </PaperProvider>
@@ -538,7 +573,7 @@ const styles = StyleSheet.create({
     fontWeight: 'bold'
   },
   searchSection: {
-    marginBottom: 30,
+    marginBottom: 20,
     padding: 15,
     backgroundColor: '#1a1a1a',
     borderRadius: 12,
@@ -572,6 +607,18 @@ const styles = StyleSheet.create({
   clearBtn: {
     flex: 1,
     borderColor: '#ff4444'
+  },
+  addSection: {
+    marginBottom: 30,
+    padding: 15,
+    backgroundColor: '#1a1a1a',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#00ff41'
+  },
+  addBtn: {
+    backgroundColor: '#00ff41',
+    paddingVertical: 8
   },
   loader: {
     marginVertical: 30
