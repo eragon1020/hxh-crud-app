@@ -38,8 +38,12 @@ const swaggerOptions = {
     },
     servers: [
       {
-        url: process.env.API_URL || `http://localhost:${PORT}`,
-        description: 'API Server'
+        url: 'https://hxh-nosql.onrender.com',
+        description: 'Production Server'
+      },
+      {
+        url: `http://localhost:${PORT}`,
+        description: 'Development Server'
       }
     ]
   },
@@ -273,7 +277,8 @@ app.post('/characters', async (req, res) => {
     const { name, age, height_cm, weight_kg, nen_type, origin, image_url, notes } = req.body;
     if (!name || !image_url) return res.status(400).json({ error: 'Name and image_url required' });
     const result = await collection.insertOne({ name, age, height_cm, weight_kg, nen_type, origin, image_url, notes });
-    res.status(201).json(result.ops ? result.ops[0] : result);
+    const newChar = await collection.findOne({ _id: result.insertedId });
+    res.status(201).json(newChar);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
