@@ -3,6 +3,7 @@ const { Pool } = require('pg');
 const cors = require('cors');
 const swaggerUi = require('swagger-ui-express');
 const swaggerJsdoc = require('swagger-jsdoc');
+const path = require('path');
 require('dotenv').config();
 
 const app = express();
@@ -28,12 +29,118 @@ const swaggerOptions = {
     },
     servers: [
       {
-        url: process.env.API_URL || `http://localhost:${PORT}`,
-        description: 'API Server'
+        url: 'https://hxh-crud-app.onrender.com',
+        description: 'Production Server'
+      },
+      {
+        url: `http://localhost:${PORT}`,
+        description: 'Development Server'
       }
-    ]
+    ],
+    components: {
+      schemas: {
+        Character: {
+          type: 'object',
+          required: ['name', 'image_url'],
+          properties: {
+            id: {
+              type: 'integer',
+              description: 'ID autogenerado',
+              example: 1
+            },
+            name: {
+              type: 'string',
+              description: 'Nombre del personaje',
+              example: 'Gon Freecss'
+            },
+            age: {
+              type: 'integer',
+              description: 'Edad del personaje',
+              example: 12
+            },
+            height_cm: {
+              type: 'integer',
+              description: 'Altura en centímetros',
+              example: 154
+            },
+            weight_kg: {
+              type: 'integer',
+              description: 'Peso en kilogramos',
+              example: 49
+            },
+            nen_type: {
+              type: 'string',
+              description: 'Tipo de Nen',
+              example: 'Enhancer'
+            },
+            origin: {
+              type: 'string',
+              description: 'Origen del personaje',
+              example: 'Whale Island'
+            },
+            image_url: {
+              type: 'string',
+              description: 'URL de la imagen',
+              example: 'https://example.com/gon.jpg'
+            },
+            notes: {
+              type: 'string',
+              description: 'Notas adicionales',
+              example: 'Protagonista de la serie'
+            }
+          }
+        },
+        CharacterInput: {
+          type: 'object',
+          required: ['name', 'image_url'],
+          properties: {
+            name: {
+              type: 'string',
+              example: 'Killua Zoldyck'
+            },
+            age: {
+              type: 'integer',
+              example: 12
+            },
+            height_cm: {
+              type: 'integer',
+              example: 158
+            },
+            weight_kg: {
+              type: 'integer',
+              example: 45
+            },
+            nen_type: {
+              type: 'string',
+              example: 'Transmuter'
+            },
+            origin: {
+              type: 'string',
+              example: 'Kukuroo Mountain'
+            },
+            image_url: {
+              type: 'string',
+              example: 'https://example.com/killua.jpg'
+            },
+            notes: {
+              type: 'string',
+              example: 'Mejor amigo de Gon'
+            }
+          }
+        },
+        Error: {
+          type: 'object',
+          properties: {
+            error: {
+              type: 'string',
+              example: 'Error message'
+            }
+          }
+        }
+      }
+    }
   },
-  apis: ['./server.js']
+  apis: [path.join(__dirname, 'server.js')]
 };
 
 const swaggerDocs = swaggerJsdoc(swaggerOptions);
@@ -61,35 +168,51 @@ initDB();
 
 /**
  * @swagger
- * components:
- *   schemas:
- *     Character:
- *       type: object
- *       required:
- *         - name
- *         - image_url
- *       properties:
- *         id:
- *           type: integer
- *         name:
- *           type: string
- *         age:
- *           type: integer
- *         height_cm:
- *           type: integer
- *         weight_kg:
- *           type: integer
- *         nen_type:
- *           type: string
- *         origin:
- *           type: string
- *         image_url:
- *           type: string
- *         notes:
- *           type: string
+ * /:
+ *   get:
+ *     summary: Información de la API
+ *     description: Retorna información básica de la API
+ *     tags: [Info]
+ *     responses:
+ *       200:
+ *         description: Información básica de la API
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                 docs:
+ *                   type: string
  */
+app.get('/', (req, res) => {
+  res.json({ message: 'Hunter x Hunter Relational API', docs: '/api-docs' });
+});
 
-// CRUD routes
+/**
+ * @swagger
+ * /characters:
+ *   get:
+ *     summary: Obtener todos los personajes
+ *     description: Retorna una lista de todos los personajes de Hunter x Hunter
+ *     tags: [Characters]
+ *     responses:
+ *       200:
+ *         description: Lista de personajes
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/Character'
+ *       500:
+ *         description: Error del servidor
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
 app.get('/characters', async (req, res) => {
   try {
     const result = await pool.query('SELECT * FROM characters ORDER BY id');
@@ -99,6 +222,41 @@ app.get('/characters', async (req, res) => {
   }
 });
 
+/**
+ * @swagger
+ * /characters/{id}:
+ *   get:
+ *     summary: Obtener un personaje por ID
+ *     description: Retorna un personaje específico según su ID
+ *     tags: [Characters]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: ID del personaje
+ *         example: 1
+ *     responses:
+ *       200:
+ *         description: Personaje encontrado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Character'
+ *       404:
+ *         description: Personaje no encontrado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       500:
+ *         description: Error del servidor
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
 app.get('/characters/:id', async (req, res) => {
   try {
     const result = await pool.query('SELECT * FROM characters WHERE id=$1', [req.params.id]);
@@ -109,6 +267,39 @@ app.get('/characters/:id', async (req, res) => {
   }
 });
 
+/**
+ * @swagger
+ * /characters:
+ *   post:
+ *     summary: Crear un nuevo personaje
+ *     description: Crea un nuevo personaje en la base de datos
+ *     tags: [Characters]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/CharacterInput'
+ *     responses:
+ *       201:
+ *         description: Personaje creado exitosamente
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Character'
+ *       400:
+ *         description: Datos inválidos
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       500:
+ *         description: Error del servidor
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
 app.post('/characters', async (req, res) => {
   try {
     const { name, age, height_cm, weight_kg, nen_type, origin, image_url, notes } = req.body;
@@ -124,6 +315,53 @@ app.post('/characters', async (req, res) => {
   }
 });
 
+/**
+ * @swagger
+ * /characters/{id}:
+ *   put:
+ *     summary: Actualizar un personaje
+ *     description: Actualiza todos los campos de un personaje existente
+ *     tags: [Characters]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: ID del personaje
+ *         example: 1
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/CharacterInput'
+ *     responses:
+ *       200:
+ *         description: Personaje actualizado exitosamente
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Character'
+ *       400:
+ *         description: Datos inválidos
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       404:
+ *         description: Personaje no encontrado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       500:
+ *         description: Error del servidor
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
 app.put('/characters/:id', async (req, res) => {
   try {
     const { name, age, height_cm, weight_kg, nen_type, origin, image_url, notes } = req.body;
@@ -140,6 +378,47 @@ app.put('/characters/:id', async (req, res) => {
   }
 });
 
+/**
+ * @swagger
+ * /characters/{id}:
+ *   delete:
+ *     summary: Eliminar un personaje
+ *     description: Elimina un personaje de la base de datos
+ *     tags: [Characters]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: ID del personaje
+ *         example: 1
+ *     responses:
+ *       200:
+ *         description: Personaje eliminado exitosamente
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: 'Character deleted'
+ *                 deleted:
+ *                   $ref: '#/components/schemas/Character'
+ *       404:
+ *         description: Personaje no encontrado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       500:
+ *         description: Error del servidor
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
 app.delete('/characters/:id', async (req, res) => {
   try {
     const result = await pool.query('DELETE FROM characters WHERE id=$1 RETURNING *', [req.params.id]);
@@ -148,10 +427,6 @@ app.delete('/characters/:id', async (req, res) => {
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
-});
-
-app.get('/', (req, res) => {
-  res.json({ message: 'Hunter x Hunter Relational API', docs: '/api-docs' });
 });
 
 app.listen(PORT, () => {
