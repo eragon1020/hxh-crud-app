@@ -8,7 +8,28 @@ require('dotenv').config();
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-app.use(cors());
+// CORS mejorado - permite todas las peticiones
+app.use(cors({
+  origin: '*',
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true
+}));
+
+// Middleware adicional para CORS
+app.use((req, res, next) => {
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  
+  // Manejar preflight requests
+  if (req.method === 'OPTIONS') {
+    return res.sendStatus(200);
+  }
+  
+  next();
+});
+
 app.use(express.json());
 
 // MongoDB setup
@@ -178,9 +199,11 @@ app.get('/', (req, res) => {
  */
 app.get('/characters', async (req, res) => {
   try {
+    console.log('GET /characters');
     const chars = await collection.find().toArray();
     res.json(chars);
   } catch (err) {
+    console.error('GET /characters error:', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -222,10 +245,12 @@ app.get('/characters', async (req, res) => {
  */
 app.get('/characters/:id', async (req, res) => {
   try {
+    console.log('GET /characters/:id', req.params.id);
     const char = await collection.findOne({ _id: new ObjectId(req.params.id) });
     if (!char) return res.status(404).json({ error: 'Character not found' });
     res.json(char);
   } catch (err) {
+    console.error('GET /characters/:id error:', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -274,12 +299,15 @@ app.get('/characters/:id', async (req, res) => {
  */
 app.post('/characters', async (req, res) => {
   try {
+    console.log('POST /characters', req.body);
     const { name, age, height_cm, weight_kg, nen_type, origin, image_url, notes } = req.body;
     if (!name || !image_url) return res.status(400).json({ error: 'Name and image_url required' });
     const result = await collection.insertOne({ name, age, height_cm, weight_kg, nen_type, origin, image_url, notes });
     const newChar = await collection.findOne({ _id: result.insertedId });
+    console.log('POST /characters success:', newChar);
     res.status(201).json(newChar);
   } catch (err) {
+    console.error('POST /characters error:', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -342,6 +370,7 @@ app.post('/characters', async (req, res) => {
  */
 app.put('/characters/:id', async (req, res) => {
   try {
+    console.log('PUT /characters/:id', req.params.id, req.body);
     const { name, age, height_cm, weight_kg, nen_type, origin, image_url, notes } = req.body;
     if (!name || !image_url) return res.status(400).json({ error: 'Name and image_url required' });
     const result = await collection.findOneAndUpdate(
@@ -350,8 +379,10 @@ app.put('/characters/:id', async (req, res) => {
       { returnDocument: 'after' }
     );
     if (!result.value) return res.status(404).json({ error: 'Character not found' });
+    console.log('PUT /characters/:id success:', result.value);
     res.json(result.value);
   } catch (err) {
+    console.error('PUT /characters/:id error:', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -399,12 +430,34 @@ app.put('/characters/:id', async (req, res) => {
  */
 app.delete('/characters/:id', async (req, res) => {
   try {
-    const result = await collection.findOneAndDelete({ _id: new ObjectId(req.params.id) });
-    if (!result.value) return res.status(404).json({ error: 'Character not found' });
+    const id = req.params.id;
+    console.log('=== DELETE REQUEST ===');
+    console.log('ID:', id);
+    console.log('ID Type:', typeof id);
+    console.log('Headers:', req.headers);
+    
+    const result = await collection.findOneAndDelete({ _id: new ObjectId(id) });
+    
+    if (!result.value) {
+      console.log('Character not found with ID:', id);
+      return res.status(404).json({ error: 'Character not found' });
+    }
+    
+    console.log('DELETE success:', result.value);
     res.json({ message: 'Character deleted', deleted: result.value });
   } catch (err) {
+    console.error('DELETE /characters/:id error:', err);
     res.status(500).json({ error: err.message });
   }
 });
 
-app.listen(PORT, () => console.log(`🚀 NoSQL service running on port ${PORT}`));
+// Manejo de errores global
+app.use((err, req, res, next) => {
+  console.error('Global error handler:', err);
+  res.status(500).json({ error: err.message || 'Internal server error' });
+});
+
+app.listen(PORT, () => {
+  console.log(`🚀 NoSQL service running on port ${PORT}`);
+  console.log(`📚 API Docs: http://localhost:${PORT}/api-docs`);
+});
