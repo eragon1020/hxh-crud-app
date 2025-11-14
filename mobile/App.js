@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { View, ScrollView, TextInput, StyleSheet, Alert } from 'react-native';
 import { Provider as PaperProvider, Button, Card, Text, ActivityIndicator } from 'react-native-paper';
-import axios from 'axios';
 
 const API_CONFIG = {
   relational: 'https://hxh-crud-app.onrender.com',
@@ -39,8 +38,9 @@ export default function App() {
     setLoading(true);
     setShowForm(false);
     try {
-      const res = await axios.get(apiUrl);
-      const found = res.data.find(char => 
+      const response = await fetch(apiUrl);
+      const data = await response.json();
+      const found = data.find(char => 
         char.name.toLowerCase().includes(searchQuery.toLowerCase())
       );
       
@@ -51,6 +51,7 @@ export default function App() {
         Alert.alert('No encontrado', `No se encontró ningún personaje con el nombre "${searchQuery}"`);
       }
     } catch (err) {
+      console.error('Search error:', err);
       Alert.alert('Error', 'No se pudo realizar la búsqueda');
     }
     setLoading(false);
@@ -93,13 +94,27 @@ export default function App() {
         notes: form.notes || null
       };
 
-      if (form.id) {
-        await axios.put(`${apiUrl}/${form.id}`, dataToSend);
-        Alert.alert('✅ Actualizado', `El personaje "${form.name}" ha sido actualizado correctamente`);
-      } else {
-        await axios.post(apiUrl, dataToSend);
-        Alert.alert('✅ Creado', `El personaje "${form.name}" ha sido creado correctamente`);
+      const url = form.id ? `${apiUrl}/${form.id}` : apiUrl;
+      const method = form.id ? 'PUT' : 'POST';
+
+      const response = await fetch(url, {
+        method: method,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(dataToSend)
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Error al guardar');
       }
+
+      const successMsg = form.id ? 'actualizado' : 'creado';
+      Alert.alert(
+        `✅ ${successMsg.charAt(0).toUpperCase() + successMsg.slice(1)}`, 
+        `El personaje "${form.name}" ha sido ${successMsg} correctamente`
+      );
       
       // Limpiar todo
       setForm({ 
@@ -117,7 +132,7 @@ export default function App() {
       setSearchQuery('');
     } catch (err) {
       console.error('Error saving:', err);
-      Alert.alert('❌ Error', err.response?.data?.error || 'No se pudo guardar el personaje');
+      Alert.alert('❌ Error', err.message || 'No se pudo guardar el personaje');
     }
     setLoading(false);
   };
@@ -142,13 +157,9 @@ export default function App() {
     const id = char.id || char._id;
     const name = char.name;
     
-    // Debug info
-    const debugInfo = `ID: ${id}\nTipo: ${typeof id}\nDB: ${activeDB}\nURL: ${apiUrl}/${id}`;
-    console.log('=== DEBUG DELETE ===', debugInfo);
-
     Alert.alert(
       '⚠️ Confirmar eliminación',
-      `¿Deseas eliminar a "${name}"?\n\n${debugInfo}`,
+      `¿Deseas eliminar a "${name}"?`,
       [
         {
           text: 'Cancelar',
@@ -160,9 +171,24 @@ export default function App() {
           onPress: async () => {
             setLoading(true);
             try {
-              console.log('Sending DELETE to:', `${apiUrl}/${id}`);
-              const response = await axios.delete(`${apiUrl}/${id}`);
-              console.log('Success:', response.data);
+              console.log('Deleting:', `${apiUrl}/${id}`);
+              
+              const response = await fetch(`${apiUrl}/${id}`, {
+                method: 'DELETE',
+                headers: {
+                  'Content-Type': 'application/json',
+                }
+              });
+
+              console.log('Response status:', response.status);
+
+              if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.error || `Error ${response.status}`);
+              }
+
+              const data = await response.json();
+              console.log('Delete success:', data);
               
               Alert.alert(
                 '✅ Eliminado', 
@@ -174,18 +200,9 @@ export default function App() {
             } catch (err) {
               console.error('DELETE ERROR:', err);
               
-              let errorDetails = 'Error desconocido';
-              if (err.response) {
-                errorDetails = `Status: ${err.response.status}\nData: ${JSON.stringify(err.response.data)}`;
-              } else if (err.request) {
-                errorDetails = 'No se recibió respuesta del servidor';
-              } else {
-                errorDetails = err.message;
-              }
-              
               Alert.alert(
                 '❌ Error al eliminar',
-                `No se pudo eliminar a "${name}"\n\n${errorDetails}`,
+                `No se pudo eliminar a "${name}"\n\nError: ${err.message}`,
                 [{ text: 'OK' }]
               );
             }
