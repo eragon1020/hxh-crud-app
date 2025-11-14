@@ -141,28 +141,53 @@ export default function App() {
   const handleDelete = async (char) => {
     const id = char.id || char._id;
     const name = char.name;
+    
+    // Debug info
+    const debugInfo = `ID: ${id}\nTipo: ${typeof id}\nDB: ${activeDB}\nURL: ${apiUrl}/${id}`;
+    console.log('=== DEBUG DELETE ===', debugInfo);
 
     Alert.alert(
       '⚠️ Confirmar eliminación',
-      `¿Estás seguro de que deseas eliminar a "${name}"?`,
+      `¿Deseas eliminar a "${name}"?\n\n${debugInfo}`,
       [
         {
           text: 'Cancelar',
           style: 'cancel'
         },
         {
-          text: 'Eliminar',
+          text: 'Sí, eliminar',
           style: 'destructive',
           onPress: async () => {
             setLoading(true);
             try {
-              await axios.delete(`${apiUrl}/${id}`);
-              Alert.alert('✅ Eliminado', `El personaje "${name}" ha sido eliminado correctamente`);
+              console.log('Sending DELETE to:', `${apiUrl}/${id}`);
+              const response = await axios.delete(`${apiUrl}/${id}`);
+              console.log('Success:', response.data);
+              
+              Alert.alert(
+                '✅ Eliminado', 
+                `El personaje "${name}" ha sido eliminado correctamente`
+              );
+              
               setSearchResult(null);
               setSearchQuery('');
             } catch (err) {
-              console.error('Error deleting:', err);
-              Alert.alert('❌ Error', err.response?.data?.error || 'No se pudo eliminar el personaje');
+              console.error('DELETE ERROR:', err);
+              
+              let errorDetails = 'Error desconocido';
+              if (err.response) {
+                errorDetails = `Status: ${err.response.status}\nData: ${JSON.stringify(err.response.data)}`;
+              } else if (err.request) {
+                errorDetails = 'No se recibió respuesta del servidor';
+              } else {
+                errorDetails = err.message;
+              }
+              
+              Alert.alert(
+                '❌ Error al eliminar',
+                `No se pudo eliminar a "${name}"\n\n${errorDetails}`,
+                [{ text: 'OK' }]
+              );
             }
             setLoading(false);
           }
