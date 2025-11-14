@@ -7,7 +7,16 @@
     "android": "expo run:android",
     "ios": "expo run:ios",
     "web": "expo start --web",
-    "build": "expo export:web"
+    "build": "expo export:web",
+    "cypress:open": "cypress open",
+    "cypress:run": "cypress run",
+    "cypress:run:chrome": "cypress run --browser chrome",
+    "cypress:run:firefox": "cypress run --browser firefox",
+    "test:e2e": "cypress run",
+    "test:e2e:headed": "cypress run --headed",
+    "test": "jest",
+    "test:coverage": "jest --coverage",
+    "test:all": "npm run test:coverage && npm run cypress:run"
   },
   "dependencies": {
     "@expo/metro-runtime": "~4.0.1",
@@ -23,7 +32,14 @@
     "react-native-web": "~0.19.10"
   },
   "devDependencies": {
-    "@babel/core": "^7.24.7"
+    "@babel/core": "^7.24.7",
+    "@babel/preset-env": "^7.28.5",
+    "@testing-library/cypress": "^10.1.0",
+    "@testing-library/jest-native": "^5.4.3",
+    "@testing-library/react-native": "^13.3.3",
+    "babel-jest": "^30.2.0",
+    "cypress": "^15.6.0",
+    "jest": "^30.2.0"
   },
   "private": true
 }

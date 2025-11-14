@@ -5,3 +5,4 @@ dist/
 web-build/
 .expo/
 .DS_Store
+coverage/ 
