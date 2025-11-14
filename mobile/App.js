@@ -143,7 +143,7 @@ export default function App() {
     const name = char.name;
 
     Alert.alert(
-      'Confirmar eliminación',
+      '⚠️ Confirmar eliminación',
       `¿Estás seguro de que deseas eliminar a "${name}"?`,
       [
         {
@@ -157,11 +157,12 @@ export default function App() {
             setLoading(true);
             try {
               await axios.delete(`${apiUrl}/${id}`);
-              Alert.alert('Éxito', `El personaje "${name}" ha sido eliminado correctamente`);
+              Alert.alert('✅ Eliminado', `El personaje "${name}" ha sido eliminado correctamente`);
               setSearchResult(null);
               setSearchQuery('');
             } catch (err) {
-              Alert.alert('Error', 'No se pudo eliminar el personaje');
+              console.error('Error deleting:', err);
+              Alert.alert('❌ Error', err.response?.data?.error || 'No se pudo eliminar el personaje');
             }
             setLoading(false);
           }
