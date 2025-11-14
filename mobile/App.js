@@ -13,6 +13,7 @@ export default function App() {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResult, setSearchResult] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ 
     id: null, 
     name: '', 
@@ -36,6 +37,7 @@ export default function App() {
     }
 
     setLoading(true);
+    setShowForm(false);
     try {
       const res = await axios.get(apiUrl);
       const found = res.data.find(char => 
@@ -58,6 +60,17 @@ export default function App() {
   const handleClearSearch = () => {
     setSearchQuery('');
     setSearchResult(null);
+    setShowForm(false);
+    setForm({ 
+      id: null, 
+      name: '', 
+      age: '', 
+      height_cm: '', 
+      weight_kg: '', 
+      nen_type: '', 
+      origin: '', 
+      image_url: '' 
+    });
   };
 
   // Guardar o actualizar personaje
@@ -77,7 +90,7 @@ export default function App() {
         Alert.alert('Éxito', `El personaje "${form.name}" ha sido creado correctamente`);
       }
       
-      // Limpiar formulario
+      // Limpiar todo
       setForm({ 
         id: null, 
         name: '', 
@@ -88,11 +101,9 @@ export default function App() {
         origin: '', 
         image_url: '' 
       });
-      
-      // Si había un resultado de búsqueda con ese nombre, actualizar
-      if (searchResult && searchResult.name === form.name) {
-        handleSearch();
-      }
+      setShowForm(false);
+      setSearchResult(null);
+      setSearchQuery('');
     } catch (err) {
       Alert.alert('Error', 'No se pudo guardar el personaje');
     }
@@ -111,6 +122,7 @@ export default function App() {
       origin: char.origin || '',
       image_url: char.image_url || ''
     });
+    setShowForm(true);
   };
 
   // Eliminar personaje con confirmación
@@ -151,6 +163,7 @@ export default function App() {
     setActiveDB(db);
     setSearchResult(null);
     setSearchQuery('');
+    setShowForm(false);
     setForm({ 
       id: null, 
       name: '', 
@@ -186,7 +199,7 @@ export default function App() {
           </Button>
         </View>
 
-        {/* Buscador */}
+        {/* Buscador - SIEMPRE VISIBLE */}
         <View style={styles.searchSection}>
           <Text style={styles.sectionTitle}>🔍 Buscar Personaje</Text>
           <TextInput
@@ -203,150 +216,169 @@ export default function App() {
               style={styles.searchBtn}
               disabled={loading}
             >
-              Buscar
+              🔍 Buscar
             </Button>
-            <Button 
-              mode="outlined" 
-              onPress={handleClearSearch} 
-              style={styles.clearBtn}
-              textColor="#00ff41"
-            >
-              Limpiar
-            </Button>
+            {(searchResult || searchQuery) && (
+              <Button 
+                mode="outlined" 
+                onPress={handleClearSearch} 
+                style={styles.clearBtn}
+                textColor="#ff4444"
+              >
+                ✖ Limpiar
+              </Button>
+            )}
           </View>
         </View>
 
-        {/* Resultado de búsqueda */}
-        {loading ? (
+        {/* Loading */}
+        {loading && (
           <ActivityIndicator animating={true} color="#00ff41" size="large" style={styles.loader} />
-        ) : searchResult ? (
-          <Card style={styles.card}>
-            <Card.Cover source={{ uri: searchResult.image_url }} />
-            <Card.Content>
-              <Text style={styles.name}>{searchResult.name}</Text>
-              <Text style={styles.info}>
-                {searchResult.nen_type || 'Desconocido'} | {searchResult.origin || 'Desconocido'}
-              </Text>
-              <Text style={styles.info}>
-                Edad: {searchResult.age || 'N/A'} años
-              </Text>
-              <Text style={styles.info}>
-                Altura: {searchResult.height_cm || 'N/A'} cm | Peso: {searchResult.weight_kg || 'N/A'} kg
-              </Text>
-            </Card.Content>
-            <Card.Actions style={styles.cardActions}>
+        )}
+
+        {/* Resultado de búsqueda CON BOTONES */}
+        {!loading && searchResult && (
+          <View>
+            <Card style={styles.card}>
+              <Card.Cover source={{ uri: searchResult.image_url }} />
+              <Card.Content>
+                <Text style={styles.name}>{searchResult.name}</Text>
+                <Text style={styles.info}>
+                  {searchResult.nen_type || 'Desconocido'} | {searchResult.origin || 'Desconocido'}
+                </Text>
+                <Text style={styles.info}>
+                  Edad: {searchResult.age || 'N/A'} años
+                </Text>
+                <Text style={styles.info}>
+                  Altura: {searchResult.height_cm || 'N/A'} cm | Peso: {searchResult.weight_kg || 'N/A'} kg
+                </Text>
+              </Card.Content>
+            </Card>
+
+            {/* BOTONES DEBAJO DEL PERSONAJE */}
+            <View style={styles.actionButtons}>
               <Button 
                 mode="contained" 
                 onPress={() => handleEdit(searchResult)}
                 style={styles.editBtn}
+                icon="pencil"
               >
-                ✏️ Editar
+                Editar
               </Button>
               <Button 
                 mode="contained" 
                 onPress={() => handleDelete(searchResult)}
                 style={styles.deleteBtn}
+                icon="delete"
               >
-                🗑️ Eliminar
+                Eliminar
               </Button>
-            </Card.Actions>
-          </Card>
-        ) : null}
+            </View>
+          </View>
+        )}
 
-        {/* Formulario para agregar/editar */}
-        <View style={styles.form}>
-          <Text style={styles.sectionTitle}>
-            {form.id ? '✏️ Editar Personaje' : '➕ Agregar Nuevo Personaje'}
-          </Text>
-          
-          <TextInput
-            style={styles.input}
-            placeholder="NOMBRE *"
-            placeholderTextColor="#9b4dca"
-            value={form.name}
-            onChangeText={(val) => setForm({ ...form, name: val })}
-          />
-          
-          <TextInput
-            style={styles.input}
-            placeholder="EDAD"
-            placeholderTextColor="#9b4dca"
-            value={form.age}
-            keyboardType="numeric"
-            onChangeText={(val) => setForm({ ...form, age: val })}
-          />
-          
-          <TextInput
-            style={styles.input}
-            placeholder="ALTURA (CM)"
-            placeholderTextColor="#9b4dca"
-            value={form.height_cm}
-            keyboardType="numeric"
-            onChangeText={(val) => setForm({ ...form, height_cm: val })}
-          />
-          
-          <TextInput
-            style={styles.input}
-            placeholder="PESO (KG)"
-            placeholderTextColor="#9b4dca"
-            value={form.weight_kg}
-            keyboardType="numeric"
-            onChangeText={(val) => setForm({ ...form, weight_kg: val })}
-          />
-          
-          <TextInput
-            style={styles.input}
-            placeholder="TIPO DE NEN"
-            placeholderTextColor="#9b4dca"
-            value={form.nen_type}
-            onChangeText={(val) => setForm({ ...form, nen_type: val })}
-          />
-          
-          <TextInput
-            style={styles.input}
-            placeholder="ORIGEN"
-            placeholderTextColor="#9b4dca"
-            value={form.origin}
-            onChangeText={(val) => setForm({ ...form, origin: val })}
-          />
-          
-          <TextInput
-            style={styles.input}
-            placeholder="URL DE LA IMAGEN *"
-            placeholderTextColor="#9b4dca"
-            value={form.image_url}
-            onChangeText={(val) => setForm({ ...form, image_url: val })}
-          />
-          
-          <Button 
-            mode="contained" 
-            onPress={handleSave} 
-            style={styles.saveBtn}
-            disabled={loading}
-          >
-            {form.id ? '💾 Actualizar' : '➕ Agregar'}
-          </Button>
+        {/* Formulario - SOLO CUANDO SE NECESITA */}
+        {showForm && (
+          <View style={styles.form}>
+            <Text style={styles.sectionTitle}>
+              ✏️ Editar Personaje
+            </Text>
+            
+            <TextInput
+              style={styles.input}
+              placeholder="NOMBRE *"
+              placeholderTextColor="#9b4dca"
+              value={form.name}
+              onChangeText={(val) => setForm({ ...form, name: val })}
+            />
+            
+            <TextInput
+              style={styles.input}
+              placeholder="EDAD"
+              placeholderTextColor="#9b4dca"
+              value={form.age}
+              keyboardType="numeric"
+              onChangeText={(val) => setForm({ ...form, age: val })}
+            />
+            
+            <TextInput
+              style={styles.input}
+              placeholder="ALTURA (CM)"
+              placeholderTextColor="#9b4dca"
+              value={form.height_cm}
+              keyboardType="numeric"
+              onChangeText={(val) => setForm({ ...form, height_cm: val })}
+            />
+            
+            <TextInput
+              style={styles.input}
+              placeholder="PESO (KG)"
+              placeholderTextColor="#9b4dca"
+              value={form.weight_kg}
+              keyboardType="numeric"
+              onChangeText={(val) => setForm({ ...form, weight_kg: val })}
+            />
+            
+            <TextInput
+              style={styles.input}
+              placeholder="TIPO DE NEN"
+              placeholderTextColor="#9b4dca"
+              value={form.nen_type}
+              onChangeText={(val) => setForm({ ...form, nen_type: val })}
+            />
+            
+            <TextInput
+              style={styles.input}
+              placeholder="ORIGEN"
+              placeholderTextColor="#9b4dca"
+              value={form.origin}
+              onChangeText={(val) => setForm({ ...form, origin: val })}
+            />
+            
+            <TextInput
+              style={styles.input}
+              placeholder="URL DE LA IMAGEN *"
+              placeholderTextColor="#9b4dca"
+              value={form.image_url}
+              onChangeText={(val) => setForm({ ...form, image_url: val })}
+            />
+            
+            <Button 
+              mode="contained" 
+              onPress={handleSave} 
+              style={styles.saveBtn}
+              disabled={loading}
+              icon="content-save"
+            >
+              💾 Guardar Cambios
+            </Button>
 
-          {form.id && (
             <Button 
               mode="outlined" 
-              onPress={() => setForm({ 
-                id: null, 
-                name: '', 
-                age: '', 
-                height_cm: '', 
-                weight_kg: '', 
-                nen_type: '', 
-                origin: '', 
-                image_url: '' 
-              })}
+              onPress={() => {
+                setShowForm(false);
+                setForm({ 
+                  id: null, 
+                  name: '', 
+                  age: '', 
+                  height_cm: '', 
+                  weight_kg: '', 
+                  nen_type: '', 
+                  origin: '', 
+                  image_url: '' 
+                });
+              }}
               style={styles.cancelBtn}
               textColor="#ff4444"
+              icon="close"
             >
-              ✖️ Cancelar Edición
+              Cancelar
             </Button>
-          )}
-        </View>
+          </View>
+        )}
+
+        {/* Espacio al final */}
+        <View style={{ height: 50 }} />
       </ScrollView>
     </PaperProvider>
   );
@@ -411,36 +443,10 @@ const styles = StyleSheet.create({
   },
   clearBtn: {
     flex: 1,
-    borderColor: '#00ff41'
+    borderColor: '#ff4444'
   },
   loader: {
-    marginVertical: 20
-  },
-  form: {
-    marginBottom: 30,
-    padding: 15,
-    backgroundColor: '#1a1a1a',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#9b4dca'
-  },
-  input: {
-    backgroundColor: '#0a0a0a',
-    color: '#00ff41',
-    borderWidth: 1,
-    borderColor: '#9b4dca',
-    borderRadius: 8,
-    marginVertical: 5,
-    padding: 12,
-    fontSize: 14
-  },
-  saveBtn: {
-    backgroundColor: '#00ff41',
-    marginTop: 15
-  },
-  cancelBtn: {
-    marginTop: 10,
-    borderColor: '#ff4444'
+    marginVertical: 30
   },
   card: {
     marginBottom: 20,
@@ -461,18 +467,43 @@ const styles = StyleSheet.create({
     fontSize: 14,
     marginVertical: 2
   },
-  cardActions: {
-    justifyContent: 'space-around',
-    padding: 10
+  actionButtons: {
+    flexDirection: 'row',
+    gap: 10,
+    marginBottom: 30
   },
   editBtn: {
     backgroundColor: '#9b4dca',
-    flex: 1,
-    marginHorizontal: 5
+    flex: 1
   },
   deleteBtn: {
     backgroundColor: '#ff4444',
-    flex: 1,
-    marginHorizontal: 5
+    flex: 1
+  },
+  form: {
+    marginBottom: 30,
+    padding: 15,
+    backgroundColor: '#1a1a1a',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#00ff41'
+  },
+  input: {
+    backgroundColor: '#0a0a0a',
+    color: '#00ff41',
+    borderWidth: 1,
+    borderColor: '#9b4dca',
+    borderRadius: 8,
+    marginVertical: 5,
+    padding: 12,
+    fontSize: 14
+  },
+  saveBtn: {
+    backgroundColor: '#00ff41',
+    marginTop: 15
+  },
+  cancelBtn: {
+    marginTop: 10,
+    borderColor: '#ff4444'
   }
 });
