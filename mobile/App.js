@@ -82,12 +82,23 @@ export default function App() {
 
     setLoading(true);
     try {
+      const dataToSend = {
+        name: form.name,
+        age: form.age ? parseInt(form.age) : null,
+        height_cm: form.height_cm ? parseInt(form.height_cm) : null,
+        weight_kg: form.weight_kg ? parseInt(form.weight_kg) : null,
+        nen_type: form.nen_type || null,
+        origin: form.origin || null,
+        image_url: form.image_url,
+        notes: form.notes || null
+      };
+
       if (form.id) {
-        await axios.put(`${apiUrl}/${form.id}`, form);
-        Alert.alert('Éxito', `El personaje "${form.name}" ha sido actualizado correctamente`);
+        await axios.put(`${apiUrl}/${form.id}`, dataToSend);
+        Alert.alert('✅ Actualizado', `El personaje "${form.name}" ha sido actualizado correctamente`);
       } else {
-        await axios.post(apiUrl, form);
-        Alert.alert('Éxito', `El personaje "${form.name}" ha sido creado correctamente`);
+        await axios.post(apiUrl, dataToSend);
+        Alert.alert('✅ Creado', `El personaje "${form.name}" ha sido creado correctamente`);
       }
       
       // Limpiar todo
@@ -105,7 +116,8 @@ export default function App() {
       setSearchResult(null);
       setSearchQuery('');
     } catch (err) {
-      Alert.alert('Error', 'No se pudo guardar el personaje');
+      console.error('Error saving:', err);
+      Alert.alert('❌ Error', err.response?.data?.error || 'No se pudo guardar el personaje');
     }
     setLoading(false);
   };
