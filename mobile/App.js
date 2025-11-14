@@ -39,12 +39,18 @@ export default function App() {
     setShowForm(false);
     try {
       const response = await fetch(apiUrl);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
       const data = await response.json();
       const found = data.find(char => 
         char.name.toLowerCase().includes(searchQuery.toLowerCase())
       );
       
       if (found) {
+        console.log('Character found:', found);
         setSearchResult(found);
       } else {
         setSearchResult(null);
@@ -52,7 +58,7 @@ export default function App() {
       }
     } catch (err) {
       console.error('Search error:', err);
-      Alert.alert('Error', 'No se pudo realizar la búsqueda');
+      Alert.alert('Error', `No se pudo realizar la búsqueda: ${err.message}`);
     }
     setLoading(false);
   };
@@ -97,6 +103,8 @@ export default function App() {
       const url = form.id ? `${apiUrl}/${form.id}` : apiUrl;
       const method = form.id ? 'PUT' : 'POST';
 
+      console.log('Saving character:', { url, method, data: dataToSend });
+
       const response = await fetch(url, {
         method: method,
         headers: {
@@ -106,9 +114,12 @@ export default function App() {
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Error al guardar');
+        const errorData = await response.json().catch(() => ({ error: 'Error desconocido' }));
+        throw new Error(errorData.error || `Error ${response.status}`);
       }
+
+      const result = await response.json();
+      console.log('Save success:', result);
 
       const successMsg = form.id ? 'actualizado' : 'creado';
       Alert.alert(
@@ -154,12 +165,26 @@ export default function App() {
 
   // Eliminar personaje con confirmación
   const handleDelete = async (char) => {
-    const id = char.id || char._id;
+    // Obtener el ID correcto según la base de datos
+    const id = activeDB === 'relational' ? char.id : char._id;
     const name = char.name;
+    
+    // Validar que tengamos un ID
+    if (!id) {
+      Alert.alert('❌ Error', 'No se pudo obtener el ID del personaje');
+      console.error('Character without ID:', char);
+      return;
+    }
+    
+    console.log('=== DELETE ATTEMPT ===');
+    console.log('Database:', activeDB);
+    console.log('Character:', char);
+    console.log('ID to delete:', id);
+    console.log('ID type:', typeof id);
     
     Alert.alert(
       '⚠️ Confirmar eliminación',
-      `¿Deseas eliminar a "${name}"?`,
+      `¿Deseas eliminar a "${name}"?\n\nBase de datos: ${activeDB}\nID: ${id}`,
       [
         {
           text: 'Cancelar',
@@ -171,42 +196,67 @@ export default function App() {
           onPress: async () => {
             setLoading(true);
             try {
-              console.log('Deleting:', `${apiUrl}/${id}`);
+              const deleteUrl = `${apiUrl}/${id}`;
               
-              const response = await fetch(`${apiUrl}/${id}`, {
+              console.log('=== DELETE REQUEST ===');
+              console.log('URL:', deleteUrl);
+              console.log('Method: DELETE');
+              
+              const response = await fetch(deleteUrl, {
                 method: 'DELETE',
                 headers: {
                   'Content-Type': 'application/json',
                 }
               });
 
-              console.log('Response status:', response.status);
+              console.log('=== DELETE RESPONSE ===');
+              console.log('Status:', response.status);
+              console.log('Status Text:', response.statusText);
+              console.log('OK:', response.ok);
 
-              if (!response.ok) {
-                const errorData = await response.json().catch(() => ({}));
-                throw new Error(errorData.error || `Error ${response.status}`);
+              // Intentar leer la respuesta como texto primero
+              const responseText = await response.text();
+              console.log('Response body (text):', responseText);
+
+              let data;
+              try {
+                data = responseText ? JSON.parse(responseText) : {};
+                console.log('Response body (parsed):', data);
+              } catch (e) {
+                console.log('Response is not valid JSON');
+                data = { message: responseText };
               }
 
-              const data = await response.json();
-              console.log('Delete success:', data);
+              if (!response.ok) {
+                const errorMsg = data.error || data.message || `Error ${response.status}: ${response.statusText}`;
+                throw new Error(errorMsg);
+              }
+
+              console.log('=== DELETE SUCCESS ===');
               
               Alert.alert(
                 '✅ Eliminado', 
                 `El personaje "${name}" ha sido eliminado correctamente`
               );
               
+              // Limpiar el estado
               setSearchResult(null);
               setSearchQuery('');
+              
             } catch (err) {
-              console.error('DELETE ERROR:', err);
+              console.error('=== DELETE ERROR ===');
+              console.error('Error object:', err);
+              console.error('Error message:', err.message);
+              console.error('Error stack:', err.stack);
               
               Alert.alert(
                 '❌ Error al eliminar',
                 `No se pudo eliminar a "${name}"\n\nError: ${err.message}`,
                 [{ text: 'OK' }]
               );
+            } finally {
+              setLoading(false);
             }
-            setLoading(false);
           }
         }
       ]
@@ -215,6 +265,7 @@ export default function App() {
 
   // Cambiar de base de datos
   const handleDBSwitch = (db) => {
+    console.log('Switching database to:', db);
     setActiveDB(db);
     setSearchResult(null);
     setSearchQuery('');
@@ -254,6 +305,13 @@ export default function App() {
           </Button>
         </View>
 
+        {/* Indicador de base de datos activa */}
+        <View style={styles.dbIndicator}>
+          <Text style={styles.dbIndicatorText}>
+            📊 Base de datos activa: {activeDB === 'relational' ? 'PostgreSQL' : 'MongoDB'}
+          </Text>
+        </View>
+
         {/* Buscador - SIEMPRE VISIBLE */}
         <View style={styles.searchSection}>
           <Text style={styles.sectionTitle}>🔍 Buscar Personaje</Text>
@@ -263,6 +321,7 @@ export default function App() {
             placeholderTextColor="#9b4dca"
             value={searchQuery}
             onChangeText={setSearchQuery}
+            onSubmitEditing={handleSearch}
           />
           <View style={styles.searchButtons}>
             <Button 
@@ -295,7 +354,10 @@ export default function App() {
         {!loading && searchResult && (
           <View>
             <Card style={styles.card}>
-              <Card.Cover source={{ uri: searchResult.image_url }} />
+              <Card.Cover 
+                source={{ uri: searchResult.image_url }} 
+                onError={(error) => console.log('Image load error:', error)}
+              />
               <Card.Content>
                 <Text style={styles.name}>{searchResult.name}</Text>
                 <Text style={styles.info}>
@@ -307,6 +369,9 @@ export default function App() {
                 <Text style={styles.info}>
                   Altura: {searchResult.height_cm || 'N/A'} cm | Peso: {searchResult.weight_kg || 'N/A'} kg
                 </Text>
+                <Text style={styles.idInfo}>
+                  ID: {searchResult.id || searchResult._id}
+                </Text>
               </Card.Content>
             </Card>
 
@@ -317,6 +382,7 @@ export default function App() {
                 onPress={() => handleEdit(searchResult)}
                 style={styles.editBtn}
                 icon="pencil"
+                disabled={loading}
               >
                 Editar
               </Button>
@@ -325,6 +391,7 @@ export default function App() {
                 onPress={() => handleDelete(searchResult)}
                 style={styles.deleteBtn}
                 icon="delete"
+                disabled={loading}
               >
                 Eliminar
               </Button>
@@ -458,11 +525,25 @@ const styles = StyleSheet.create({
   dbSwitch: {
     flexDirection: 'row',
     justifyContent: 'space-around',
-    marginBottom: 30,
+    marginBottom: 10,
     gap: 10
   },
   dbButton: {
     flex: 1
+  },
+  dbIndicator: {
+    backgroundColor: '#1a1a1a',
+    padding: 10,
+    borderRadius: 8,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: '#00ff41'
+  },
+  dbIndicatorText: {
+    color: '#00ff41',
+    textAlign: 'center',
+    fontSize: 14,
+    fontWeight: 'bold'
   },
   searchSection: {
     marginBottom: 30,
@@ -521,6 +602,12 @@ const styles = StyleSheet.create({
     color: '#ccc',
     fontSize: 14,
     marginVertical: 2
+  },
+  idInfo: {
+    color: '#9b4dca',
+    fontSize: 12,
+    marginTop: 8,
+    fontStyle: 'italic'
   },
   actionButtons: {
     flexDirection: 'row',
