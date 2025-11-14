@@ -163,7 +163,7 @@ export default function App() {
     setShowForm(true);
   };
 
-  // Eliminar personaje con confirmación
+  // Eliminar personaje con confirmación nativa del navegador
   const handleDelete = async (char) => {
     // Obtener el ID correcto según la base de datos
     const id = activeDB === 'relational' ? char.id : char._id;
@@ -176,91 +176,83 @@ export default function App() {
       return;
     }
     
+    // Usar confirm() del navegador en lugar de Alert.alert para web
+    const confirmed = window.confirm(`⚠️ ¿Deseas eliminar a "${name}"?\n\nBase de datos: ${activeDB}\nID: ${id}`);
+    
+    if (!confirmed) {
+      console.log('Delete cancelled by user');
+      return;
+    }
+    
     console.log('=== DELETE ATTEMPT ===');
     console.log('Database:', activeDB);
     console.log('Character:', char);
     console.log('ID to delete:', id);
     console.log('ID type:', typeof id);
     
-    Alert.alert(
-      '⚠️ Confirmar eliminación',
-      `¿Deseas eliminar a "${name}"?\n\nBase de datos: ${activeDB}\nID: ${id}`,
-      [
-        {
-          text: 'Cancelar',
-          style: 'cancel'
-        },
-        {
-          text: 'Sí, eliminar',
-          style: 'destructive',
-          onPress: async () => {
-            setLoading(true);
-            try {
-              const deleteUrl = `${apiUrl}/${id}`;
-              
-              console.log('=== DELETE REQUEST ===');
-              console.log('URL:', deleteUrl);
-              console.log('Method: DELETE');
-              
-              const response = await fetch(deleteUrl, {
-                method: 'DELETE',
-                headers: {
-                  'Content-Type': 'application/json',
-                }
-              });
-
-              console.log('=== DELETE RESPONSE ===');
-              console.log('Status:', response.status);
-              console.log('Status Text:', response.statusText);
-              console.log('OK:', response.ok);
-
-              // Intentar leer la respuesta como texto primero
-              const responseText = await response.text();
-              console.log('Response body (text):', responseText);
-
-              let data;
-              try {
-                data = responseText ? JSON.parse(responseText) : {};
-                console.log('Response body (parsed):', data);
-              } catch (e) {
-                console.log('Response is not valid JSON');
-                data = { message: responseText };
-              }
-
-              if (!response.ok) {
-                const errorMsg = data.error || data.message || `Error ${response.status}: ${response.statusText}`;
-                throw new Error(errorMsg);
-              }
-
-              console.log('=== DELETE SUCCESS ===');
-              
-              Alert.alert(
-                '✅ Eliminado', 
-                `El personaje "${name}" ha sido eliminado correctamente`
-              );
-              
-              // Limpiar el estado
-              setSearchResult(null);
-              setSearchQuery('');
-              
-            } catch (err) {
-              console.error('=== DELETE ERROR ===');
-              console.error('Error object:', err);
-              console.error('Error message:', err.message);
-              console.error('Error stack:', err.stack);
-              
-              Alert.alert(
-                '❌ Error al eliminar',
-                `No se pudo eliminar a "${name}"\n\nError: ${err.message}`,
-                [{ text: 'OK' }]
-              );
-            } finally {
-              setLoading(false);
-            }
-          }
+    setLoading(true);
+    try {
+      const deleteUrl = `${apiUrl}/${id}`;
+      
+      console.log('=== DELETE REQUEST ===');
+      console.log('URL:', deleteUrl);
+      console.log('Method: DELETE');
+      
+      const response = await fetch(deleteUrl, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
         }
-      ]
-    );
+      });
+
+      console.log('=== DELETE RESPONSE ===');
+      console.log('Status:', response.status);
+      console.log('Status Text:', response.statusText);
+      console.log('OK:', response.ok);
+
+      // Intentar leer la respuesta como texto primero
+      const responseText = await response.text();
+      console.log('Response body (text):', responseText);
+
+      let data;
+      try {
+        data = responseText ? JSON.parse(responseText) : {};
+        console.log('Response body (parsed):', data);
+      } catch (e) {
+        console.log('Response is not valid JSON');
+        data = { message: responseText };
+      }
+
+      if (!response.ok) {
+        const errorMsg = data.error || data.message || `Error ${response.status}: ${response.statusText}`;
+        throw new Error(errorMsg);
+      }
+
+      console.log('=== DELETE SUCCESS ===');
+      
+      Alert.alert(
+        '✅ Eliminado', 
+        `El personaje "${name}" ha sido eliminado correctamente`
+      );
+      
+      // Limpiar el estado
+      setSearchResult(null);
+      setSearchQuery('');
+      
+    } catch (err) {
+      console.error('=== DELETE ERROR ===');
+      console.error('Error object:', err);
+      console.error('Error message:', err.message);
+      console.error('Error stack:', err.stack);
+      
+      Alert.alert(
+        '❌ Error al eliminar',
+        `No se pudo eliminar a "${name}"\n\nError: ${err.message}`,
+        [{ text: 'OK' }]
+      );
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Cambiar de base de datos
